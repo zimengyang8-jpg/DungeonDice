@@ -9,13 +9,13 @@ import SwiftUI
 
 struct ContentView: View {
     enum Dice: Int, CaseIterable, Identifiable {
-        case four = 4
-        case six = 6
-        case eight = 8
-        case ten = 10
-        case twelve = 12
-        case twenty = 20
-        case hundred = 100
+        case d4 = 4
+        case d6 = 6
+        case d8 = 8
+        case d10 = 10
+        case d12 = 12
+        case d20 = 20
+        case d100 = 100
         
         var dieName: String {
             return "\(self)".capitalized
@@ -29,8 +29,10 @@ struct ContentView: View {
     }
     
     @State private var message: String = "Roll a die!"
-    private let diceTypes = [4, 6, 8, 10, 12, 20, 100]
-    
+    @State private var animationTrigger = false // change when animation should occur
+    @State private var isDoneAnimating = true
+    @State private var rolls: [Int] = []
+    private var grandTotal: Int { rolls.reduce(0, +) } // computational property
     
     var body: some View {
         VStack {
@@ -38,34 +40,74 @@ struct ContentView: View {
                 .font(.largeTitle)
                 .fontWeight(.black)
                 .foregroundStyle(.red)
+                        
+            GroupBox {
+                ForEach(rolls, id: \.self) { roll in
+                    Text("\(roll)")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                
+                Divider()
+                
+                HStack {
+                    Text("TOTAL: \(grandTotal)")
+                        .bold()
+                        .font(.title2)
+                        .monospacedDigit() // only animate on digits
+                        .contentTransition(.numericText())
+                        .animation(.default, value: grandTotal)
+                    
+                    Spacer()
+                    Button("Clear") {
+                        rolls.removeAll()
+                    }
+                    .buttonStyle(.glass)
+                    .tint(.red)
+                    .disabled(rolls.isEmpty)
+                }
+            } label: {
+                Text("Session Rolls:")
+            }
             
             Spacer()
             
             Text(message)
                 .multilineTextAlignment(.center)
-                .font(.largeTitle)
+                .scaleEffect(isDoneAnimating ? 1.0 : 0.6) // animate to 1.0
+                .opacity(isDoneAnimating ? 1.0 : 0.2)
+                .font(.title)
+                .rotation3DEffect(isDoneAnimating ? .degrees(360) : .degrees(0), axis: (x: 1, y: 0, z: 0)) // flip text effect
+                .onChange(of: animationTrigger) {
+                    isDoneAnimating = false // set to the beginning false state right away
+                    withAnimation(.interpolatingSpring(duration: 0.6, bounce: 0.4)) {
+                        isDoneAnimating = true
+                    }
+                }
             
             Spacer()
             
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))]) {
                 ForEach(Dice.allCases) { die in
                     Button("\(die.rawValue)-sided") {
-                        message = "You rolled a \(die.roll) on a \(die.dieName)-die."
-                        }
-                        .buttonStyle(.glassProminent)
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .tint(.red)
-                        .font(.title2)
+                        let roll = die.roll
+                        message = "You rolled a \(roll) on a \(die)."
+                        animationTrigger.toggle()
+                        rolls.append(roll)
                     }
+                    .buttonStyle(.glassProminent)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .tint(.red)
+                    .font(.title2)
+                }
             }
             
             
         }
         .padding()
-
+        
     }
-
+    
 }
 #Preview {
     ContentView()
